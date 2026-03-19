@@ -11,6 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -24,6 +25,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import TrayWidget from "@/components/TrayWidget";
 
 const MOCK_USER = {
   firstName: "Alice",
@@ -33,7 +35,7 @@ const MOCK_USER = {
 
 const NAV_ITEMS = [
   { label: "Report", href: "/report", icon: LayoutDashboard },
-  { label: "Vulnerabilities", href: "/vulnerability", icon: ShieldAlert },
+  { label: "Vulnerabilities explorer", href: "/vulnerability", icon: ShieldAlert },
 ];
 
 export default function AppSidebar() {
@@ -64,6 +66,10 @@ export default function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarSeparator />
+
+        <TrayWidget />
       </SidebarContent>
 
       <SidebarFooter>

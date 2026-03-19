@@ -188,7 +188,7 @@ function buildSommaire(vulns: Vulnerability[]): Content[] {
   ];
 }
 
-function buildVulnerabilityPage(vuln: Vulnerability, index: number, scope: Scope | undefined): Content[] {
+function buildVulnerabilityPage(vuln: Vulnerability, index: number, scope: Scope | undefined, baseUrl: string): Content[] {
   const scopeLabel = scope?.domain ?? scope?.ipAddress ?? vuln.scopeId;
 
   return [
@@ -261,6 +261,17 @@ function buildVulnerabilityPage(vuln: Vulnerability, index: number, scope: Scope
     } as any,
     ...markdownToPdfmake(vuln.recommendation),
 
+    // "View in Fleuret" link
+    {
+      text: "View in Fleuret",
+      link: `${baseUrl}/vulnerability?id=${vuln.id}`,
+      fontSize: 10,
+      bold: true,
+      color: "#2563eb",
+      decoration: "underline",
+      margin: [0, 16, 0, 0],
+    } as any,
+
     { text: "", pageBreak: "after" } as any,
   ];
 }
@@ -292,6 +303,7 @@ export async function GET(request: Request) {
   );
 
   const scopeMap = new Map(summary.scopes.map((s) => [s.id, s]));
+  const origin = new URL(request.url).origin;
 
   const content: Content[] = [
     ...buildCoverPage(
@@ -302,7 +314,7 @@ export async function GET(request: Request) {
       summary.scopes
     ),
     ...buildSommaire(vulns),
-    ...vulns.flatMap((v, i) => buildVulnerabilityPage(v, i, scopeMap.get(v.scopeId))),
+    ...vulns.flatMap((v, i) => buildVulnerabilityPage(v, i, scopeMap.get(v.scopeId), origin)),
   ];
 
   // Remove trailing page break on last page
