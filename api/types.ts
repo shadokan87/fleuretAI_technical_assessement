@@ -94,3 +94,16 @@ export interface PentestReport {
   summary: ExecutiveSummary;
   vulnerabilities: Vulnerability[];
 }
+
+// Lightweight — returned by GET /vulnerabilities
+export type VulnerabilityListItem = Pick<Vulnerability, "id" | "title" | "severity" | "scopeId">;
+
+// Full detail — returned by GET /vulnerabilities/:id
+export type VulnerabilityDetail = Vulnerability;
+
+// Summary endpoint response
+export interface ReportSummaryResponse {
+  summary: ExecutiveSummary;
+  scopes: Scope[];
+  vulnerabilities: VulnerabilityListItem[];
+}
