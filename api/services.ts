@@ -17,6 +17,7 @@ export class ReportService {
         title: v.title,
         severity: v.severity,
         scopeId: v.scopeId,
+        asset: v.asset,
       })),
     };
   }

@@ -1,63 +1,78 @@
 export type Severity = "Critical" | "High" | "Medium" | "Low" | "Info";
 
+export const VULNERABILITY_CATEGORIES = {
+  "Injection": [
+    "SQL Injection",
+    "NoSQL Injection",
+    "LDAP Injection",
+    "Command Injection",
+    "XML Injection",
+    "Server-Side Template Injection (SSTI)",
+  ],
+  "XSS": [
+    "Reflected XSS",
+    "Stored XSS",
+    "DOM-based XSS",
+  ],
+  "Access Control": [
+    "Broken Access Control",
+    "Insecure Direct Object Reference (IDOR)",
+    "Privilege Escalation",
+    "Missing Function Level Access Control",
+  ],
+  "Authentication & Session": [
+    "Broken Authentication",
+    "Weak Password Policy",
+    "Session Fixation",
+    "JWT Vulnerability",
+    "OAuth Misconfiguration",
+    "Missing Rate Limiting",
+  ],
+  "Cryptography": [
+    "Sensitive Data Exposure",
+    "Weak Cryptographic Algorithm",
+    "Hardcoded Credentials",
+    "Insecure TLS Configuration",
+  ],
+  "Configuration": [
+    "Security Misconfiguration",
+    "CORS Misconfiguration",
+    "Verbose Error Messages",
+    "Directory Listing Enabled",
+    "Default Credentials",
+  ],
+  "SSRF / RFI / LFI": [
+    "Server-Side Request Forgery (SSRF)",
+    "Local File Inclusion (LFI)",
+    "Remote File Inclusion (RFI)",
+    "Path Traversal",
+  ],
+  "Client-side": [
+    "Cross-Site Request Forgery (CSRF)",
+    "Clickjacking",
+    "Open Redirect",
+    "Host Header Injection",
+  ],
+  "Infrastructure": [
+    "Subdomain Takeover",
+    "DNS Misconfiguration",
+    "HTTP Request Smuggling",
+    "HTTP Response Splitting",
+  ],
+  "Components": [
+    "Vulnerable and Outdated Component",
+    "Insecure Deserialization",
+    "XML External Entity (XXE)",
+  ],
+  "Other": [
+    "Business Logic Flaw",
+    "Insufficient Logging and Monitoring",
+    "Remote Code Execution (RCE)",
+  ],
+} as const;
+
 export type VulnerabilityTitle =
-  // Injection
-  | "SQL Injection"
-  | "NoSQL Injection"
-  | "LDAP Injection"
-  | "Command Injection"
-  | "XML Injection"
-  | "Server-Side Template Injection (SSTI)"
-  // XSS
-  | "Reflected XSS"
-  | "Stored XSS"
-  | "DOM-based XSS"
-  // Access Control
-  | "Broken Access Control"
-  | "Insecure Direct Object Reference (IDOR)"
-  | "Privilege Escalation"
-  | "Missing Function Level Access Control"
-  // Authentication & Session
-  | "Broken Authentication"
-  | "Weak Password Policy"
-  | "Session Fixation"
-  | "JWT Vulnerability"
-  | "OAuth Misconfiguration"
-  | "Missing Rate Limiting"
-  // Cryptography
-  | "Sensitive Data Exposure"
-  | "Weak Cryptographic Algorithm"
-  | "Hardcoded Credentials"
-  | "Insecure TLS Configuration"
-  // Configuration
-  | "Security Misconfiguration"
-  | "CORS Misconfiguration"
-  | "Verbose Error Messages"
-  | "Directory Listing Enabled"
-  | "Default Credentials"
-  // SSRF / RFI / LFI
-  | "Server-Side Request Forgery (SSRF)"
-  | "Local File Inclusion (LFI)"
-  | "Remote File Inclusion (RFI)"
-  | "Path Traversal"
-  // Client-side
-  | "Cross-Site Request Forgery (CSRF)"
-  | "Clickjacking"
-  | "Open Redirect"
-  | "Host Header Injection"
-  // Infrastructure
-  | "Subdomain Takeover"
-  | "DNS Misconfiguration"
-  | "HTTP Request Smuggling"
-  | "HTTP Response Splitting"
-  // Components
-  | "Vulnerable and Outdated Component"
-  | "Insecure Deserialization"
-  | "XML External Entity (XXE)"
-  // Other
-  | "Business Logic Flaw"
-  | "Insufficient Logging and Monitoring"
-  | "Remote Code Execution (RCE)"
+  | (typeof VULNERABILITY_CATEGORIES)[keyof typeof VULNERABILITY_CATEGORIES][number]
   | (string & {}); // escape hatch for unlisted vulnerabilities
 
 export interface Scope {
@@ -71,6 +86,7 @@ export interface Vulnerability {
   title: VulnerabilityTitle;
   severity: Severity;
   scopeId: string;
+  asset: string;
   description: string;
   recommendation: string;
 }
@@ -96,7 +112,7 @@ export interface PentestReport {
 }
 
 // Lightweight — returned by GET /vulnerabilities
-export type VulnerabilityListItem = Pick<Vulnerability, "id" | "title" | "severity" | "scopeId">;
+export type VulnerabilityListItem = Pick<Vulnerability, "id" | "title" | "severity" | "scopeId" | "asset">;
 
 // Full detail — returned by GET /vulnerabilities/:id
 export type VulnerabilityDetail = Vulnerability;
