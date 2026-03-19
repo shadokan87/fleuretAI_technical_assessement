@@ -7,6 +7,7 @@ import Providers from "./providers";
 import VulnerabilityWidget from "@/components/VulnerabilityWidget";
 import AppSidebar from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
@@ -39,6 +40,7 @@ export default function RootLayout({
               </main>
             </SidebarProvider>
             <VulnerabilityWidget />
+            <Toaster position="top-right" />
           </ThemeProvider>
         </Providers>
       </body>
