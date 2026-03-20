@@ -8,8 +8,8 @@
 # Lancement
 npm install && npm run build && npm start
 ```
-Naviguer sur `http://localhost:3000/report`
-car eat vide et http://localhost:3000 contient du boilerplate
+Naviguer sur http://localhost:3000/report
+car est vide et http://localhost:3000 contient du boilerplate
 ## Choix techniques
 
 **Stack :** Next.js 16 (App Router), TypeScript, Tailwind CSS, shadcn/ui, React Query.
