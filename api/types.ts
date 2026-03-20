@@ -89,6 +89,7 @@ export interface Vulnerability {
   asset: string;
   description: string;
   recommendation: string;
+  discoveredAt: string; // ISO 8601
 }
 
 export interface VulnerabilityCount {
@@ -112,7 +113,7 @@ export interface PentestReport {
 }
 
 // Lightweight — returned by GET /vulnerabilities
-export type VulnerabilityListItem = Pick<Vulnerability, "id" | "title" | "severity" | "scopeId" | "asset">;
+export type VulnerabilityListItem = Pick<Vulnerability, "id" | "title" | "severity" | "scopeId" | "asset" | "discoveredAt">;
 
 // Full detail — returned by GET /vulnerabilities/:id
 export type VulnerabilityDetail = Vulnerability;
@@ -122,4 +123,10 @@ export interface ReportSummaryResponse {
   summary: ExecutiveSummary;
   scopes: Scope[];
   vulnerabilities: VulnerabilityListItem[];
+}
+
+export interface ReportListItem {
+  id: string;
+  name: string;
+  scanDate: string;
 }

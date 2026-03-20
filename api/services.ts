@@ -1,7 +1,15 @@
 import mocks from "./mocks.json";
-import { ReportSummaryResponse, VulnerabilityDetail } from "./types";
+import { ReportSummaryResponse, VulnerabilityDetail, ReportListItem } from "./types";
 
 export class ReportService {
+  getReportList(): ReportListItem[] {
+    return (mocks as any[]).map((r) => ({
+      id: r.id,
+      name: r.name,
+      scanDate: r.summary.scanDate,
+    }));
+  }
+
   async getReportSummary(reportId: string): Promise<ReportSummaryResponse | null> {
     const report: any = mocks.find((r) => r.id === reportId);
     
@@ -18,6 +26,7 @@ export class ReportService {
         severity: v.severity,
         scopeId: v.scopeId,
         asset: v.asset,
+        discoveredAt: v.discoveredAt,
       })),
     };
   }

@@ -160,35 +160,19 @@ export default function FilterBar({
         <FilterButton icon={CalendarIcon} tooltip="Date range filter" popoverClassName="w-auto">
           <Flex col gap={2}>
             <span className="text-sm font-medium">Date range</span>
-            <Flex col gap={1}>
-              <label className="text-xs text-muted-foreground">From</label>
-              <Calendar
-                mode="single"
-                selected={filters.dateRange.from}
-                onSelect={(date) =>
-                  updateFilter("dateRange", {
-                    ...filters.dateRange,
-                    from: date,
-                  })
-                }
-              />
-            </Flex>
-            <Flex col gap={1}>
-              <label className="text-xs text-muted-foreground">To</label>
-              <Calendar
-                mode="single"
-                selected={filters.dateRange.to}
-                onSelect={(date) =>
-                  updateFilter("dateRange", {
-                    ...filters.dateRange,
-                    to: date,
-                  })
-                }
-                disabled={(date) =>
-                  filters.dateRange.from ? date < filters.dateRange.from : false
-                }
-              />
-            </Flex>
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={filters.dateRange.from}
+              selected={{ from: filters.dateRange.from, to: filters.dateRange.to }}
+              onSelect={(range) =>
+                updateFilter("dateRange", {
+                  from: range?.from,
+                  to: range?.to,
+                })
+              }
+              numberOfMonths={2}
+            />
           </Flex>
         </FilterButton>
       </Flex>

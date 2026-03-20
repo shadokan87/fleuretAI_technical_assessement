@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -15,6 +16,8 @@ import { useTray } from "@/hooks/useTray";
 import { useReportsCache } from "@/hooks/useReportsCache";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import ShareTrayModal from "@/components/share/ShareTrayModal";
+import type { SharePayload } from "@/components/share/types";
 
 const SEVERITY_VARIANT: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
   Critical: "destructive",
@@ -27,6 +30,7 @@ const SEVERITY_VARIANT: Record<string, "destructive" | "default" | "secondary" |
 export default function TrayWidget() {
   const { trays, activeTrayId, setActiveTrayId, openManageModal } = useTray();
   const { cache } = useReportsCache();
+  const [shareOpen, setShareOpen] = useState(false);
 
   const activeIndex = trays.findIndex((t) => t.id === activeTrayId);
   const activeTray = activeIndex >= 0 ? trays[activeIndex] : null;
@@ -51,7 +55,7 @@ export default function TrayWidget() {
         .filter(Boolean)
     : [];
 
-  if (trays.length === 0) return null;
+  // if (trays.length === 0) return null;
 
   return (
     <SidebarGroup>
@@ -71,7 +75,7 @@ export default function TrayWidget() {
           <div className="flex items-center gap-0.5">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-6" disabled>
+                <Button variant="ghost" size="icon" className="size-6" onClick={() => setShareOpen(true)} disabled={vulnItems.length === 0}>
                   <Share2 className="size-3.5" />
                 </Button>
               </TooltipTrigger>
@@ -113,6 +117,20 @@ export default function TrayWidget() {
           </SidebarMenu>
         )}
       </SidebarGroupContent>
+
+      <ShareTrayModal
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        payload={
+          activeTray
+            ? ({
+                trayName: activeTray.name,
+                vulnerabilities: vulnItems.filter(Boolean) as SharePayload["vulnerabilities"],
+                baseUrl: typeof window !== "undefined" ? window.location.origin : "",
+              } satisfies SharePayload)
+            : null
+        }
+      />
     </SidebarGroup>
   );
 }

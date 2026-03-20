@@ -1,7 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { ReportSummaryResponse, Vulnerability } from "@/api/types";
 import Flex from "@/components/Flex";
 import ReportHeader from "./_components/ReportHeader";
@@ -9,11 +11,36 @@ import FilterBar from "./_components/FilterBar";
 import VulnerabilityTable from "./_components/VulnerabilityTable";
 import { Filters, initialFilters, getCategoryForTitle } from "./_types";
 import { useReportsCache, CachedReport } from "@/hooks/useReportsCache";
+import { useTray } from "@/hooks/useTray";
+import { toast } from "sonner";
 
 export default function ReportPage() {
-  const [reportId] = useState("report-001");
+  return (
+    <Suspense>
+      <ReportPageInner />
+    </Suspense>
+  );
+}
+
+function ReportPageInner() {
+  const searchParams = useSearchParams();
+  const reportId = searchParams.get("reportId") ?? "report-001";
   const [filters, setFilters] = useState<Filters>(initialFilters);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { cache, addReport } = useReportsCache();
+  const { trays, activeTrayId, addToTray, openManageModal } = useTray();
+
+  const handleAddSelectedToTray = () => {
+    if (selectedIds.size === 0) return;
+    const activeTray = trays.find((t) => t.id === activeTrayId);
+    if (!activeTray) {
+      openManageModal();
+      return;
+    }
+    selectedIds.forEach((id) => addToTray(activeTray.id, id));
+    toast.success(`Added ${selectedIds.size} vulnerabilities to ${activeTray.name}`);
+    setSelectedIds(new Set());
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["report", reportId],
@@ -36,6 +63,12 @@ export default function ReportPage() {
       return { ...summary, vulnerabilities: details } as CachedReport;
     },
   });
+
+  // Reset filters when switching reports
+  useEffect(() => {
+    setFilters(initialFilters);
+    setSelectedIds(new Set());
+  }, [reportId]);
 
   useEffect(() => {
     if (data && !cache[reportId]) {
@@ -66,6 +99,19 @@ export default function ReportPage() {
         return false;
       if (filters.scopes.length && !filters.scopes.includes(v.scopeId))
         return false;
+      if (filters.dateRange.from || filters.dateRange.to) {
+        const vulnDate = new Date(v.discoveredAt);
+        if (filters.dateRange.from) {
+          const fromStart = new Date(filters.dateRange.from);
+          fromStart.setHours(0, 0, 0, 0);
+          if (vulnDate < fromStart) return false;
+        }
+        if (filters.dateRange.to) {
+          const toEnd = new Date(filters.dateRange.to);
+          toEnd.setHours(23, 59, 59, 999);
+          if (vulnDate > toEnd) return false;
+        }
+      }
       return true;
     });
   }, [data, filters]);
@@ -77,6 +123,9 @@ export default function ReportPage() {
         scopes={data?.scopes}
         totalVulnerabilities={data?.vulnerabilities.length}
         isLoading={isLoading}
+        reportId={reportId}
+        selectedCount={selectedIds.size}
+        onAddSelectedToTray={handleAddSelectedToTray}
       />
       <FilterBar
         filters={filters}
@@ -87,6 +136,8 @@ export default function ReportPage() {
         vulnerabilities={filtered}
         scopes={data?.scopes ?? []}
         isLoading={isLoading}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
       />
     </Flex>
   );
